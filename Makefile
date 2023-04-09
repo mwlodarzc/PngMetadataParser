@@ -5,8 +5,8 @@ setup: requirements.txt
 	pip install -r requirements.txt
 
 run: setup
-	python3 src/parser.py
+	python3 parser/parser.py
 
 clean:
-	rm -rf __pycache__
+	rm -rf parser/__pycache__
 
