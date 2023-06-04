@@ -2,7 +2,7 @@ from io import BufferedReader
 
 
 CRITICAL_CHUNKS = {"IHDR", "PLTE", "IDAT", "IEND"}
-SUPPORTED_CHUNKS = CRITICAL_CHUNKS.union({"IHDR", "PLTE", "cHRM", "pHYs"})
+SUPPORTED_CHUNKS = CRITICAL_CHUNKS.union({"cHRM", "pHYs"})
 """
 Take into consideration possibility of no inheritance and calling specific chunks in Chunk __init__
 """
@@ -43,14 +43,6 @@ def PLTE(data: bytes):
         print(type(err), f"{__name__}: {err}")
     finally:
         return info
-
-
-def IDAT(data: bytes):
-    return {}
-
-
-def IEND(data: bytes):
-    return {}
 
 
 def cHRM(data: bytes):
