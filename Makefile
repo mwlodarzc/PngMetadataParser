@@ -2,10 +2,10 @@
 .PHONY: run clean
 
 setup: requirements.txt
-	pip install -r requirements.txt
+	pip3 install -r "requirements.txt"
 
 run: setup
-	python3 parser/parser.py
+	python parser/parser.py
 
 clean:
 	rm -rf parser/__pycache__
