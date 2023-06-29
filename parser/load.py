@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import zlib
 import numpy as np
 from random import randint
+import cv2
 
 PNG_SIGNATURE = "PNG"
 
@@ -46,7 +47,12 @@ class ImagePNG(object):
             return b
         else:
             return c
-
+    def display_colors(palette, box):
+        colors = []  # Inicjalizacja pustej listy na kolory
+        for color, code in zip(palette, box):
+            colors.append(color)  # Dodanie koloru do listy
+        return colors  # Zwrócenie listy kolorów
+    
     @staticmethod
     def __calculate_crc(data: bytes):
         crc = zlib.crc32(data)
@@ -146,7 +152,7 @@ class ImagePNG(object):
                     raise NameError(f"filter unknown: {filter_type}")
                 Recon.append(recon_x & 0xFF)
         return Recon
-
+   
     def clear_metadata(self):
         try:
             self.chunks = [c for c in self.chunks if c.type_code in CRITICAL_CHUNKS]
@@ -187,7 +193,29 @@ class ImagePNG(object):
         )
         plt.axis("off")
         plt.show()
+        
+    @staticmethod
+    def display_colors(palette):
+        box = [f"\033[48;2;{r};{g};{b}m \033[49m" for r, g, b in palette]
+        for i, (color, code) in enumerate(zip(palette, box), 0):
+            print(f'{i:02}. {code}  {str(color)}')
 
+    @staticmethod   
+    def plot_histogram(palette, histogram):
+        # Tworzenie listy indeksów kolorów
+        colors = list(range(len(histogram)))
+        box = [f"\033[48;2;{r};{g};{b}m \033[49m" for r, g, b in palette]
+        plt.bar(colors, histogram)
+
+        # Ustawienie etykiet dla osi x i y oraz tytułu wykresu
+        plt.xlabel('Color Index')
+        plt.ylabel('Occurrences')
+        plt.title('Histogram')
+        # Wyświetlenie wykresu
+        plt.show()
+
+
+    
     def chunks_info(self) -> dict:
         # sourcery skip: extract-duplicate-method, use-dict-items
         length = 32
@@ -200,11 +228,19 @@ class ImagePNG(object):
             print("-" * length)
             print(f"{'Address':<{skip+divide}}: {c.address}")
             print("-" * length)
-
-            if c.type_code in SUPPORTED_CHUNKS:
+            
+            if c.type_code == "PLTE":  # Dodanie wyjątku dla chunku PLTE
+                print(f"{'Palette colors:':<{length}}")
+                palette = c.info["palette"]
+                __class__.display_colors(c.info["palette"])
+            elif c.type_code == "hIST":
+                print(f"{'Histogram:':<{length}}")
+                __class__.plot_histogram(palette, c.info["histogram"])  # Wywołanie funkcji histogramu
+                
+            elif c.type_code in SUPPORTED_CHUNKS:
                 print(f"{'Data:':<{length}}")
                 for i in c.info:
-                    print(f"{' '*skip}{i:<{divide}}: {c.info[i]}")
+                    print(f"{' ' * skip}{i:<{divide}}: {c.info[i]}")
             else:
                 print("Unsupported chunk.")
             print("-" * length)
@@ -214,3 +250,51 @@ class ImagePNG(object):
             print("-" * length)
             if c.type_code != "IEND":
                 print(end="\n" * horizontal_skip)
+                
+    def fourier_transform(self):
+        # Load a grayscale image
+        image = cv2.imread(self.filename, 0)
+
+        # Perform Fourier transform
+        fft_image = np.fft.fft2(image)
+        fft_shift = np.fft.fftshift(fft_image)
+        magnitude_spectrum = 20 * np.log(np.abs(fft_shift)) # Compute magnitude spectrum
+        phase_spectrum = np.angle(fft_shift)  # Compute phase spectrum
+        
+        # Inverse Fourier transform
+        ifft_shift = np.fft.ifftshift(fft_shift)
+        ifft_image = np.fft.ifft2(ifft_shift)
+        reconstructed_image = np.abs(ifft_image)
+
+        # Display the original and reconstructed images
+        plt.subplot(1, 2, 1)
+        plt.imshow(image, cmap='gray')
+        plt.title('Original Image')
+        plt.xticks([])
+        plt.yticks([])
+
+        plt.subplot(1, 2, 2)
+        plt.imshow(reconstructed_image, cmap='gray')
+        plt.title('Reconstructed Image')
+        plt.xticks([])
+        plt.yticks([])
+
+        plt.figure()
+        plt.subplot(1, 2, 1)
+        plt.imshow(magnitude_spectrum, cmap='gray')
+        plt.title('Magnitude Spectrum')
+        plt.xticks([])
+        plt.yticks([])
+
+        plt.subplot(1, 2, 2)
+        plt.imshow(phase_spectrum, cmap='gray')
+        plt.title('Phase Spectrum')
+        plt.xticks([])
+        plt.yticks([])
+
+        plt.show()
+
+
+
+        
+    

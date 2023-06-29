@@ -2,7 +2,7 @@ from io import BufferedReader
 
 
 CRITICAL_CHUNKS = {"IHDR", "PLTE", "IDAT", "IEND"}
-SUPPORTED_CHUNKS = CRITICAL_CHUNKS.union({"cHRM", "pHYs"})
+SUPPORTED_CHUNKS = CRITICAL_CHUNKS.union({"cHRM", "pHYs", "hIST", "gAMA","sBIT"})
 """
 Take into consideration possibility of no inheritance and calling specific chunks in Chunk __init__
 """
@@ -29,20 +29,23 @@ def IHDR(data: bytes):
         print(type(err), f"{__name__}: {err}")
     finally:
         return info
-
-
+    
 def PLTE(data: bytes):
     try:
         if len(data) % 3:
             raise IndexError("Palette entries")
-        info = {
-            "palette": [tuple(r, g, b) for (r, g, b) in data],
-            "box": [f"\033[48:2::{r}:{g}:{b}m \033[49m" for r, g, b in info["palette"]],
+        palette = [(data[i], data[i+1], data[i+2]) for i in range(0, len(data), 3)]
+        info = { 
+            "palette": palette,
         }
     except IndexError as err:
         print(type(err), f"{__name__}: {err}")
+        info = {}
     finally:
         return info
+
+
+
 
 
 def cHRM(data: bytes):
@@ -84,6 +87,47 @@ def pHYs(data: bytes):
         print(type(err), f"{__name__}: {err}")
     finally:
         return info
+    
+def hIST(data: bytes):
+    try:
+        histogram = []
+        for i in range(0, len(data), 2):
+            count = int.from_bytes(data[i : i + 2], "big")
+            histogram.append(count)
+        info = {"histogram": histogram}
+    except Exception as err:
+        print(type(err), f"{__name__}: {err}")
+    finally:
+        print(histogram)
+    
+        return info
+
+def gAMA(data: bytes):
+    try:
+        gamma = int.from_bytes(data, "big") / 100000
+        info = {"gamma": gamma}
+    except Exception as err:
+        print(type(err), f"{__name__}: {err}")
+    finally:
+        return info
+def sBIT(data: bytes):
+    try:
+        if len(data) == 1:
+            grayscale_bits = data[0]
+            info = {"grayscale_bits": grayscale_bits}
+        elif len(data) == 3:
+            red_bits, green_bits, blue_bits = data
+            info = {
+                "red_bits": red_bits,
+                "green_bits": green_bits,
+                "blue_bits": blue_bits
+            }
+        else:
+            raise ValueError("Invalid sBIT data")
+    except Exception as err:
+        print(type(err), f"{__name__}: {err}")
+    finally:
+        return info
 
 
 class Chunk(object):
@@ -98,3 +142,4 @@ class Chunk(object):
         except Exception:
             self.info = {}
         self.CRC = stream.read(4)
+
